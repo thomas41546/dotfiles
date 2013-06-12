@@ -1,0 +1,13 @@
+set morespace
+set autoindent
+set tabsize 4
+set nowrap
+set historylog
+set smooth
+set regexp
+set smarthome
+set const
+set tabstospaces
+
+set nohelp
+
