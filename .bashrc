@@ -33,9 +33,7 @@ case $TERM in
         b_nc="\e[49m"
         ;;                                                                      
 esac         
-
-[ "$SSH_CLIENT" ] && c_host=$c_green$c_bright || c_host=$c_green                
-                                                                                
+     
 __jobcount () {                                                                 
     local stopped=$(jobs -s | wc -l)                                            
     local result=" "                                                            
