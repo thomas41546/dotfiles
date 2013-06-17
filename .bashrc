@@ -18,19 +18,19 @@ case $TERM in
     dumb)                                                                       
         ;;                                                                      
     *)                                                                          
-        c_black="\e[30m"
-        c_bright="\e[1m"                                                    
-        c_yellow="\e[33m"                                                 
-        c_green="\e[32m"                                                 
-        c_blue="\e[34m"                                                  
-        c_red="\e[31m" 
-        c_gray="\e[37m"                                  
-        c_mag="\e[35m"
-        c_white="\e[97m"
-        c_cyan="\e[96m"
-        c_nc="\e[0m"                                                   
-        b_red="\e[101m"
-        b_nc="\e[49m"
+        c_black="\x1B[30m"
+        c_bright="\x1B[1m"                                                    
+        c_yellow="\x1B[33m"                                                 
+        c_green="\x1B[32m"                                                 
+        c_blue="\x1B[34m"                                                  
+        c_red="\x1B[31m" 
+        c_gray="\x1B[37m"                                  
+        c_mag="\x1B[35m"
+        c_white="\x1B[97m"
+        c_cyan="\x1B[96m"
+        c_nc="\x1B[0m"                                                   
+        b_red="\x1B[101m"
+        b_nc="\x1B[49m"
         ;;                                                                      
 esac         
      
