@@ -1,16 +1,18 @@
+# If not running interactively, don't do anything
+[ -z "$PS1" ] && return
+
 shell="$(basename $(ps -p $$ -o command | sed '1d; s/^-//; s/ .*$//'))"    
 
 export PATH=$PATH:$HOME/bin
 shopt -s checkwinsize
+shopt -s autocd
 
 export LS_COLORS='*_test.py=31:di=94:fi=0:ln=96:ow=97;42:or=33:mi=103;33:ex=01;92:*.pyc=90:*.o=90:*.d=90:*.py=31:*.c=36:*.h=93:*_test.py=36'
 export HISTFILESIZE=90000
 export HISTCONTROL=ignoredups
 
-
-if [ -f /etc/bash_completion ] && ! shopt -oq posix; then
-    . /etc/bash_completion
-fi
+export EDITOR=vim
+export MERGE_TOOL=meld
 
 [ -x /usr/bin/lesspipe ] && eval "$(lesspipe)"
 
@@ -120,3 +122,24 @@ up(){
   fi
   cd $d
 }
+
+extract () {
+    if [ -f $1 ] ; then
+        case $1 in
+            *.tar.bz2)  tar xjf $1      ;;
+            *.tar.gz)   tar xzf $1      ;;
+            *.bz2)      bunzip2 $1      ;;
+            *.rar)      rar x $1        ;;
+            *.gz)       gunzip $1       ;;
+            *.tar)      tar xf $1       ;;
+            *.tbz2)     tar xjf $1      ;;
+            *.tgz)      tar xzf $1      ;;
+            *.zip)      unzip $1        ;;
+            *.Z)        uncompress $1   ;;
+            *)          echo "'$1' cannot be extracted via extract()" ;;
+        esac
+    else
+        echo "'$1' is not a valid file"
+    fi
+}
+
