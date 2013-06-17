@@ -4,10 +4,19 @@
 shell="$(basename $(ps -p $$ -o command | sed '1d; s/^-//; s/ .*$//'))"    
 
 export PATH=$PATH:$HOME/bin
-shopt -s checkwinsize
-shopt -s autocd
+stty cols 800
 
-export LS_COLORS='*_test.py=31:di=94:fi=0:ln=96:ow=97;42:or=33:mi=103;33:ex=01;92:*.pyc=90:*.o=90:*.d=90:*.py=31:*.c=36:*.h=93:*_test.py=36'
+if [ "$(uname -s)" == "Linux" ]; then
+    #LINUX
+    shopt -s checkwinsize
+    shopt -s autocd
+    export LS_COLORS='*_test.py=31:di=94:fi=0:ln=96:ow=97;42:or=33:mi=103;33:ex=01;92:*.pyc=90:*.o=90:*.d=90:*.py=31:*.c=36:*.h=93:*_test.py=36'
+elif [ "$(uname -s)" == "Darwin" ]; then
+    #OSX    
+    export CLICOLOR=1
+    export LSCOLORS=GxFxCxDxBxegedabagaced
+fi
+    
 export HISTFILESIZE=90000
 export HISTCONTROL=ignoredups
 
@@ -89,10 +98,7 @@ PS1=$(echo -e "${c_bright}${_user}${_host}${_cwd}${_prompt}${_git}${_err}${jobs}
 
 alias py='/usr/bin/python'
 alias nano='vim'
-alias ls='ls --color=auto'
 alias grep='grep --color=always'
-alias ll='ls -lah --color=auto'
-alias ks='ls --color=auto'
 alias zzz='sudo pm-suspend'
 alias gg='giggle'
 alias emacs='vim'
