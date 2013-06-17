@@ -1,11 +1,92 @@
-shopt -s checkwinsize
+shell="$(basename $(ps -p $$ -o command | sed '1d; s/^-//; s/ .*$//'))"    
+
 export PATH=$PATH:$HOME/bin
+shopt -s checkwinsize
+
 export LS_COLORS='*_test.py=31:di=94:fi=0:ln=96:ow=97;42:or=33:mi=103;33:ex=01;92:*.pyc=90:*.o=90:*.d=90:*.py=31:*.c=36:*.h=93:*_test.py=36'
 export HISTFILESIZE=90000
+export HISTCONTROL=ignoredups
+
 
 if [ -f /etc/bash_completion ] && ! shopt -oq posix; then
     . /etc/bash_completion
 fi
+
+[ -x /usr/bin/lesspipe ] && eval "$(lesspipe)"
+
+case $TERM in                                                                   
+    dumb)                                                                       
+        ;;                                                                      
+    *)                                                                          
+        c_black="\e[30m"
+        c_bright="\e[1m"                                                    
+        c_yellow="\e[33m"                                                 
+        c_green="\e[32m"                                                 
+        c_blue="\e[34m"                                                  
+        c_red="\e[31m" 
+        c_gray="\e[37m"                                  
+        c_mag="\e[35m"
+        c_white="\e[97m"
+        c_cyan="\e[96m"
+        c_nc="\e[0m"                                                   
+        b_red="\e[101m"
+        b_nc="\e[49m"
+        ;;                                                                      
+esac         
+
+[ "$SSH_CLIENT" ] && c_host=$c_green$c_bright || c_host=$c_green                
+                                                                                
+__jobcount () {                                                                 
+    local stopped=$(jobs -s | wc -l)                                            
+    local result=" "                                                            
+    [ $stopped -gt 0 ] && result="$result($stopped) "                           
+    echo "$result"                                                              
+}                                                                               
+                                                                                
+__shorten () {                                                                  
+    local max=$(($COLUMNS/4))                                                   
+    local result="$@"                                                           
+    [[ $result == $HOME/* ]] && result="~${result#$HOME}"                       
+    local offset=$(( ${#result} - $max + 3 ))                                   
+    [ $offset -gt 0 ] && result="...${result:$offset:$max}"                     
+    [[ $result == ...*/* ]] && result="$(echo $result | sed 's/^[^/]*/.../')"   
+    echo $result                                                                
+}                                                                               
+                                                                                
+git_branch ()
+{
+    local result=`git rev-parse --abbrev-ref HEAD 2>/dev/null`
+    echo "$result"
+}
+
+get_rc ()
+{
+    echo "$?"
+}
+
+#does not work, gets the rc from git_branch ?
+_err="$c_mag"'[$(get_rc)]'
+_err=""
+if [ $EUID = 0 ]; then                             
+_user="${c_mag}\u"
+else
+_user="${c_red}\u"
+fi                                                         
+
+if [ "$SSH_CLIENT" ]; then
+_ip=`echo $SSH_CLIENT | sed -nE 's/^([^ ]*) .*$/\1/p'`
+_host="${c_gray}@${c_cyan}${_ip}"                                                            
+else
+_host="${c_gray}@${c_green}\h"                                                            
+fi
+
+_jobs="${c_white}"'$(__jobcount)'                                             
+_cwd=" $([ -w "$PWD" ])${c_blue}"   
+_prompt="${c_blue}"'$(__shorten \w)'    
+_git="${c_yellow}["'$(git_branch)'"]"
+
+PS1=$(echo -e "${c_bright}${_user}${_host}${_cwd}${_prompt}${_git}${_err}${jobs} ${c_nc}")                   
+
 alias py='/usr/bin/python'
 alias nano='vim'
 alias ls='ls --color=auto'
@@ -41,12 +122,3 @@ up(){
   fi
   cd $d
 }
-
-git_prompt2 ()
-{
-    RESULT=`git rev-parse --abbrev-ref HEAD 2>/dev/null`
-    echo "$RESULT"
-}
-
-PROMPT_COMMAND='PS1="\[\e[0;31m\]\u\[\e[m\]@\h:\[\e[1;32m\]\w\[\e[m\][$(git_prompt2)]\[\e[1;31m\]|\[\e[m\] "'
-
