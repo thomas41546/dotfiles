@@ -11,6 +11,7 @@ if [ "$(uname -s)" == "Linux" ]; then
     shopt -s checkwinsize
     shopt -s autocd
     export LS_COLORS='*_test.py=31:di=94:fi=0:ln=96:ow=97;42:or=33:mi=103;33:ex=01;92:*.pyc=90:*.o=90:*.d=90:*.py=31:*.c=36:*.h=93:*_test.py=36'
+    alias ls='ls --color=auto'
 elif [ "$(uname -s)" == "Darwin" ]; then
     #OSX    
     export CLICOLOR=1
