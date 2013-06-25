@@ -1,9 +1,9 @@
-# If not running interactively, don't do anything
-[ -z "$PS1" ] && return
-
 shell="$(basename $(ps -p $$ -o command | sed '1d; s/^-//; s/ .*$//'))"    
 
 export PATH=$PATH:$HOME/bin
+
+# If not running interactively, don't do anything
+[ -z "$PS1" ] && return
 
 if [ "$(uname -s)" == "Linux" ]; then
     #LINUX
@@ -121,6 +121,12 @@ function s() { # do sudo, or sudo the last command if no argument given
     fi
 }
 
+function re()
+{
+    perl -pe "s|$1|$2|"
+}
+
+
 function gitupdate()
 {   
     git commit -a -m "placeholder commit REMOVE!!";
@@ -152,4 +158,3 @@ extract () {
         echo "'$1' is not a valid file"
     fi
 }
-
