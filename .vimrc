@@ -35,4 +35,4 @@ map <C-n> :set nu!<CR>
 
 set mouse=r
 au BufReadPost * if line("'\"") > 0|if line("'\"") <= line("$")|exe("norm '\"")|else|exe "norm $"|endif|endif
-
+colorscheme desert
