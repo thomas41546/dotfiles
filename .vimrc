@@ -38,10 +38,12 @@ set guioptions-=m
 set guioptions-=T
 set guioptions-=r
 set guifont=Monospace\ 9
-nnoremap <C-Left> :tabprevious<CR>
-nnoremap <C-Right> :tabnext<CR>
-nnoremap <silent> <A-Left> :execute 'silent! tabmove ' . (tabpagenr()-2)<CR>
-nnoremap <silent> <A-Right> :execute 'silent! tabmove ' . tabpagenr()<CR>
+
+nnoremap <c-c> :q<CR>
+nnoremap <c-space> <c-w><c-w>
+nnoremap <c-up> <c-w><c-s>
+nnoremap <c-right> <c-w><c-v>
+
 
 augroup vimrc_autocmds
     autocmd!
