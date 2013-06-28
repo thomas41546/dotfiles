@@ -18,6 +18,7 @@ elif [ "$(uname -s)" == "Darwin" ]; then
     export CLICOLOR=1
     export LSCOLORS=GxFxCxDxBxegedabagaced
     alias la='ls -la'
+	alias gvim='mvim'
 fi
 
 export HISTFILESIZE=20000
@@ -102,11 +103,12 @@ _git="${c_yellow}["'$(git_branch)'"]"
 PS1=$(echo -e "${c_bright}${_user}${_host}${_cwd}${_prompt}${_git}${jobs} ${c_nc}")                   
 
 alias py='/usr/bin/python'
-alias nano='vim'
+alias vim='gvim'
+alias nano='gvim'
 alias grep='grep --color=always'
 alias zzz='sudo pm-suspend'
 alias gg='giggle'
-alias emacs='vim'
+alias emacs='gvim'
 
 alias ..="cd .."
 alias ...="cd ../.."

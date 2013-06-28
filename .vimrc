@@ -37,13 +37,14 @@ colorscheme desert
 set guioptions-=m
 set guioptions-=T
 set guioptions-=r
-set guifont=Monospace\ 9
+set guifont=Monospace\ 8
 
 nnoremap <c-c> :q<CR>
 nnoremap <c-space> <c-w><c-w>
 nnoremap <c-up> <c-w><c-s>
 nnoremap <c-right> <c-w><c-v>
-
+nnoremap <c-t> :ConqueTerm bash<CR>
+nnoremap <c-home> :tab help<CR>
 
 augroup vimrc_autocmds
     autocmd!
