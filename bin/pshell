@@ -20,6 +20,26 @@ from itertools import groupby
 DEBUG = False 
 ENV = os.environ
 
+SPGEAR = (     '/spgear/spgear/bin:'
+               '/spgear/tools/bin:'
+               '/home/runner/bin:'
+               '/spgear/spgear/bin:'
+               '/spgear/tools/bin:')
+
+ENV["PATH"] = (SPGEAR + 
+               '/bin:'
+               '/usr/sbin:'
+               '/usr/local/bin:'
+               '/sbin:'
+               '/home/polast/bin:'
+               '/usr/bin')
+
+ENV["EDITOR"] = 'vim'
+ENV["MERGE_TOOL"] = 'meld'
+ENV["LS_COLORS"] = ('*_test.py=31:di=94:fi=0:ln=96:ow=97;42:or=33:mi=103;33:'
+                    'ex=01;92:*.pyc=90:*.o=90:*.d=90:*.py=31:*.c=36:*.h=93:'
+                    '*_test.py=36')
+
 class CommandManager(cmd.Cmd):    
 
     def postcmd(self,stop, line):
