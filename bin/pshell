@@ -1,0 +1,233 @@
+#!/usr/bin/python
+import code
+import atexit
+import os
+import subprocess
+import signal
+import shlex
+import traceback
+import getpass
+import socket
+import re
+import readline
+import glob
+import cmd
+from itertools import chain
+from itertools import groupby
+
+DEBUG = False 
+ENV = os.environ
+
+class CommandManager(cmd.Cmd):    
+
+    def postcmd(self,stop, line):
+        PS1 = "%s@%s %s# " % (
+                                  getpass.getuser(),           
+                                  socket.gethostname(),
+                                  os.getcwd())
+        self.prompt = PS1
+
+    def default(self, line):
+        global DEBUG
+        try:
+            inp = line
+            blobs = shlex.split(inp.strip())
+            
+            # Phase 2 - map
+            processes = blob_process_mapper(blobs)
+           
+            if DEBUG: print [str(x) for x in processes]
+
+            lastProcess = None
+            # Phase 3 - execute
+            for i in range(0,len(processes)):
+                p = processes[i]
+                
+                if isinstance(p, Pipe):
+                    continue
+                
+                if isinstance(p, Command):
+                    
+                    fPipe = bool(i + 1 < len(processes) and 
+                                 isinstance(processes[i+1], Pipe))
+                    
+                    bPipe = bool(i > 0 and 
+                                 isinstance(processes[i-1], Pipe))
+                    
+                    if fPipe:
+                        p.stdout = subprocess.PIPE             
+
+                    if bPipe:
+                        p.stdin = lastProcess.stdout
+
+                    p.setup()
+
+                    if fPipe:
+                        lastProcess = p.process
+                    else:
+                        rc = p.run()
+                        if rc != 0: print "RC",rc 
+
+        except Exception as e:
+            print "Error occured: %s" % str(e)
+            traceback.print_exc()
+
+
+    def completedefault(self, text, line, start_index, end_index): 
+        blobs = shlex.split(line.strip())
+
+        global ENV
+        for i in range(0, len(blobs)):
+            PLACE_HOLDER='5cb21c779316d132cbe203dd9c02e5715bbfc316'
+            blobs[i] = blobs[i].replace('~~', PLACE_HOLDER)
+            blobs[i] = blobs[i].replace('~', ENV["HOME"]+'/')
+            blobs[i] = blobs[i].replace(PLACE_HOLDER,'~')
+        
+        # TODO PATH WITH - does not work
+        # Search path for executable programs 
+        matches = []
+        if len(blobs) == 1:
+            global ENV
+            paths = ENV["PATH"].split(':')
+            for p in paths:
+                try:
+                    for f in os.listdir(p):
+                        if os.access(os.path.join(p,f), os.X_OK) and f.startswith(blobs[0]):
+                            matches += [f] 
+                except Exception as e: pass
+            
+            if line.find(matches[0]) == -1 and line.find(' ') == -1:
+                return matches
+
+        # Default starts directory path
+        if line[-1] == ' ':
+            matches = []
+            for g in os.listdir(os.getcwd()): matches += [g]
+            matches = filter(lambda x:x!='/' or x!='./' or x != '.',matches)
+            return matches
+       
+        # Match all path arguments
+        head, tail = os.path.split(blobs[-1])
+        if head == '': head = '.'
+        matches = []
+        for d in os.listdir(head):
+            if d.startswith(tail):
+                matches += [d]
+        return matches
+
+class Pipe:
+    def __init__(self, op):
+        self.op = op
+    
+    def __str__(self):
+        return "PIPE[%s]" % self.op
+
+class Command:
+    def __init__(self, args):
+        global ENV
+
+        # ~ matching
+        for i in range(0, len(args)):
+            PLACE_HOLDER='5cb21c779316d132cbe203dd9c02e5715bbfc316'
+            args[i] = args[i].replace('~~', PLACE_HOLDER)
+            args[i] = args[i].replace('~', ENV["HOME"])
+            args[i] = args[i].replace(PLACE_HOLDER,'~')
+
+        # alias
+        if args[0] == 'ls': args = ['ls','--color'] + args[1:] 
+        elif args[0] == 'grep': args = ['grep','--color'] + args[1:] 
+        elif args[0] == 'nano': args = ['gvim'] + args[1:]
+        elif args[0] == 'vim': args = ['gvim'] + args[1:]
+        elif args[0] == 'emacs': args = ['gvim'] + args[1:]
+        elif args[0] == 'py': args = ['/usr/bin/python'] + args[1:]
+        elif args[0] == 'hh': args = ['cd','/home/polast/workspace/nsfw']
+        elif args[0] == 'check': args = ['pylint','-E','--rcfile=/home/polast/workspace/nsfw/runner/doc/pylintrc'] + args[1:]
+        self.args = args
+        self.env = ENV
+        self.pipes(os.sys.stdin, os.sys.stdout, os.sys.stderr)
+        self.process = None
+
+    def pipes(self, stdin, stdout, stderr):
+        self.stdin = stdin
+        self.stdout = stdout
+        self.stderr = stderr 
+
+    def __str__(self):
+        return "CMD" + str(self.args)
+
+    def setup(self):
+        if len(self.args) == 0 or len(self.args[0]) < 1:
+            return 0
+   
+        # builtins 
+        if self.args[0] == 'export':
+            print "Setting environment %s=%s" % (self.args[1],self.args[2])
+            global ENV
+            ENV[self.args[1]] = self.args[2]
+            return 0 
+        
+        if self.args[0] == 'exit':
+            os.sys.exit(0)
+            return 0 
+
+        if self.args[0] == 'debug':
+            global DEBUG
+            if DEBUG:
+                DEBUG = False
+            else:
+                DEBUG = True
+            print "DEBUG = ",DEBUG
+            return 0
+
+        if self.args[0] == 'exe':
+            exec((' ').join(self.args[1:]))
+            return 0
+    
+        if self.args[0] == 'cd':  
+            try:
+                os.chdir((' ').join(self.args[1:]))
+            except Exception as e:
+                print "ERROR",str(e)
+                return 1
+            return 0
+
+        self.process = subprocess.Popen(self.args, 
+                                       stdout = self.stdout, 
+                                       stdin = self.stdin,
+                                       stderr = self.stderr,
+                                       shell = False,
+                                       env = self.env)
+    def run(self):
+        if self.process is None:
+            return 0 
+
+        try:
+            self.process.wait()
+
+        except KeyboardInterrupt:
+            self.process.send_signal(signal.SIGTERM)
+            return 0
+
+        return self.process.returncode
+
+def blob_process_mapper(blobs): 
+    seps = ['|']
+
+    seps_ordered = []
+    for blob in blobs: 
+        if blob in seps: 
+            seps_ordered += [Pipe(blob)]
+
+    seps_index = 0
+    process_args = []
+    for k, group in groupby(blobs, lambda x: x in seps):
+        if not k:
+            process_args += [Command(list(group))]
+            if seps_index < len(seps_ordered):
+                process_args += [seps_ordered[seps_index]]
+                seps_index += 1
+
+    return process_args
+    
+cmdManager = CommandManager()
+cmdManager.cmdloop()
