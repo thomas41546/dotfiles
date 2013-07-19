@@ -85,7 +85,8 @@ class CommandManager(cmd.Cmd):
 
         except Exception as e:
             print "Error occured: %s" % str(e)
-            traceback.print_exc()
+            if DEBUG:
+                traceback.print_exc()
 
 
     def completedefault(self, text, line, start_index, end_index): 
@@ -274,4 +275,9 @@ except Exception as e:
     print "Failed to load history.."
 
 cmdManager = CommandManager()
-cmdManager.cmdloop()
+
+while True:
+    try:
+        cmdManager.cmdloop()
+    except KeyboardInterrupt as e:
+        print "Caught keyboard interrupt"
