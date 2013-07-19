@@ -11,7 +11,9 @@ import socket
 import re
 import readline
 import glob
-import cmd
+import command as cmd
+
+from colorama import Fore, Back, Style
 from itertools import chain
 from itertools import groupby
 
@@ -21,11 +23,24 @@ ENV = os.environ
 class CommandManager(cmd.Cmd):    
 
     def postcmd(self,stop, line):
-        PS1 = "%s@%s %s# " % (
-                                  getpass.getuser(),           
-                                  socket.gethostname(),
-                                  os.getcwd())
+            
+        gitp = subprocess.Popen(["git","rev-parse","--abbrev-ref","HEAD"],
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                shell=False)
+
+        git = gitp.communicate()[0].strip()
+
+        PS1 = "%s%s%s %s%s%s" % (
+                                  Style.BRIGHT + Fore.RED + getpass.getuser(),
+                                  Fore.WHITE + '@',
+                                  Fore.GREEN + socket.gethostname(),
+                                  Fore.BLUE + os.getcwd(),
+                                  Fore.YELLOW + '['+git+']',
+                                  Fore.WHITE + ': '+ 
+                                  Fore.RESET + Style.NORMAL)
         self.prompt = PS1
+        readline.write_history_file()
 
     def default(self, line):
         global DEBUG
@@ -77,13 +92,15 @@ class CommandManager(cmd.Cmd):
         blobs = shlex.split(line.strip())
 
         global ENV
-        for i in range(0, len(blobs)):
-            PLACE_HOLDER='5cb21c779316d132cbe203dd9c02e5715bbfc316'
-            blobs[i] = blobs[i].replace('~~', PLACE_HOLDER)
-            blobs[i] = blobs[i].replace('~', ENV["HOME"]+'/')
-            blobs[i] = blobs[i].replace(PLACE_HOLDER,'~')
+        for i in range(0, len(blobs)): 
+            if blobs[i].startswith('~'):
+                blobs[i] = blobs[i].replace('~', ENV["HOME"]+'/')
         
+        # TODO completion does not work with first command when using absolute
+        # path -- for example /usr/bin/na[TAB]
+
         # TODO PATH WITH - does not work
+        
         # Search path for executable programs 
         matches = []
         if len(blobs) == 1:
@@ -96,6 +113,8 @@ class CommandManager(cmd.Cmd):
                             matches += [f] 
                 except Exception as e: pass
             
+            if len(matches) == 0: return None
+
             if line.find(matches[0]) == -1 and line.find(' ') == -1:
                 return matches
 
@@ -128,10 +147,8 @@ class Command:
 
         # ~ matching
         for i in range(0, len(args)):
-            PLACE_HOLDER='5cb21c779316d132cbe203dd9c02e5715bbfc316'
-            args[i] = args[i].replace('~~', PLACE_HOLDER)
-            args[i] = args[i].replace('~', ENV["HOME"])
-            args[i] = args[i].replace(PLACE_HOLDER,'~')
+            if args[i].startswith('~'):
+                args[i] = args[i].replace('~', ENV["HOME"])
 
         # alias
         if args[0] == 'ls': args = ['ls','--color'] + args[1:] 
@@ -158,18 +175,20 @@ class Command:
     def setup(self):
         if len(self.args) == 0 or len(self.args[0]) < 1:
             return 0
-   
+
         # builtins 
         if self.args[0] == 'export':
+            if len(self.args) != 3:
+                return 0
             print "Setting environment %s=%s" % (self.args[1],self.args[2])
             global ENV
             ENV[self.args[1]] = self.args[2]
             return 0 
-        
+         
         if self.args[0] == 'exit':
             os.sys.exit(0)
-            return 0 
-
+            return 0
+        
         if self.args[0] == 'debug':
             global DEBUG
             if DEBUG:
@@ -183,6 +202,26 @@ class Command:
             exec((' ').join(self.args[1:]))
             return 0
     
+        if self.args[0] == 'history':
+
+            hfilepath = os.path.join(ENV["HOME"],".history")
+
+            if len(self.args) > 1:
+                if self.args[1].lower() == '-c':
+                    readline.clear_history()
+                    readline.write_history_file()
+                    return 0
+
+                return 1 
+            else:
+                f = open(hfilepath,'r')
+                i = 0
+                for line in f:
+                    i += 1
+                    print "%d %s" % (i,line.strip())
+                f.close()
+                return 0 
+
         if self.args[0] == 'cd':  
             try:
                 os.chdir((' ').join(self.args[1:]))
@@ -228,6 +267,11 @@ def blob_process_mapper(blobs):
                 seps_index += 1
 
     return process_args
-    
+
+try:
+    readline.read_history_file()
+except Exception as e:
+    print "Failed to load history.."
+
 cmdManager = CommandManager()
 cmdManager.cmdloop()
