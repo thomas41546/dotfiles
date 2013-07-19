@@ -1,29 +1,41 @@
-# If not running interactively, don't do anything
-[ -z "$PS1" ] && return
-
 shell="$(basename $(ps -p $$ -o command | sed '1d; s/^-//; s/ .*$//'))"    
 
 export PATH=$PATH:$HOME/bin
+
+# If not running interactively, don't do anything
+[ -z "$PS1" ] && return
 
 if [ "$(uname -s)" == "Linux" ]; then
     #LINUX
     shopt -s checkwinsize
     shopt -s autocd
+	shopt -s histappend
     export LS_COLORS='*_test.py=31:di=94:fi=0:ln=96:ow=97;42:or=33:mi=103;33:ex=01;92:*.pyc=90:*.o=90:*.d=90:*.py=31:*.c=36:*.h=93:*_test.py=36'
     alias ls='ls --color=auto'
+    alias la='ls -la --color=auto'
 elif [ "$(uname -s)" == "Darwin" ]; then
     #OSX    
     export CLICOLOR=1
     export LSCOLORS=GxFxCxDxBxegedabagaced
+    alias la='ls -la'
 fi
 
-export HISTFILESIZE=90000
+export HISTFILESIZE=20000
+export HISTSIZE=10000
 export HISTCONTROL=ignoredups
 
 export EDITOR=vim
 export MERGE_TOOL=meld
 
 [ -x /usr/bin/lesspipe ] && eval "$(lesspipe)"
+
+export LESS_TERMCAP_mb=$'\E[01;31m'
+export LESS_TERMCAP_md=$'\E[01;31m'
+export LESS_TERMCAP_me=$'\E[0m'
+export LESS_TERMCAP_se=$'\E[0m'
+export LESS_TERMCAP_so=$'\E[01;44;33m'
+export LESS_TERMCAP_ue=$'\E[0m'
+export LESS_TERMCAP_us=$'\E[01;32m'
 
 case $TERM in                                                                   
     dumb)                                                                       
@@ -44,7 +56,7 @@ case $TERM in
         b_nc="\[\x1B[49m\]"
         ;;                                                                      
 esac         
-     
+ 
 __jobcount () {                                                                 
     local stopped=$(jobs -s | wc -l)                                            
     local result=" "                                                            
@@ -68,33 +80,26 @@ git_branch ()
     echo "$result"
 }
 
-get_rc ()
-{
-    echo "$?"
-}
 
-#does not work, gets the rc from git_branch ?
-#_err="$c_mag"'[$(get_rc)]'
-_err=""
 if [ $EUID = 0 ]; then                             
-_user="${c_mag}\u${c_nc}"
+_user="${c_mag}\u"
 else
-_user="${c_red}\u${c_nc}"
+_user="${c_red}\u"
 fi                                                         
 
 if [ "$SSH_CLIENT" ]; then
 _ip=`echo $SSH_CLIENT | sed -nE 's/^([^ ]*) .*$/\1/p'`
-_host="${c_gray}@${c_nc}${c_cyan}${_ip}${c_nc}"                                                            
+_host="${c_gray}@${c_cyan}${_ip}"                                                            
 else
-_host="${c_gray}@${c_nc}${c_green}\h${c_nc}"                                                            
+_host="${c_gray}@${c_green}\h"                                                            
 fi
 
-_jobs="${c_white}"'$(__jobcount)'"${c_nc}"                                            
+_jobs="${c_white}"'$(__jobcount)'""                                            
 _cwd=" $([ -w "$PWD" ])"
-_prompt="${c_blue}"'$(__shorten \w)'"${c_nc}"    
-_git="${c_yellow}["'$(git_branch)'"]${c_nc}"
+_prompt="${c_blue}"'$(__shorten \w)'""    
+_git="${c_yellow}["'$(git_branch)'"]"
 
-PS1=$(echo -e "${_user}${_host}${_cwd}${_prompt}${_git}${_err}${jobs} ")                   
+PS1=$(echo -e "${c_bright}${_user}${_host}${_cwd}${_prompt}${_git}${jobs} ${c_nc}")                   
 
 alias py='/usr/bin/python'
 alias nano='vim'
@@ -102,6 +107,25 @@ alias grep='grep --color=always'
 alias zzz='sudo pm-suspend'
 alias gg='giggle'
 alias emacs='vim'
+
+alias ..="cd .."
+alias ...="cd ../.."
+alias ....="cd ../../.."
+alias .....="cd ../../../.."
+
+function s() { # do sudo, or sudo the last command if no argument given
+    if [[ $# == 0 ]]; then
+    	sudo $(history -p '!!')
+    else
+    	sudo "$@"
+    fi
+}
+
+function re()
+{
+    perl -pe "s|$1|$2|"
+}
+
 
 function gitupdate()
 {   
@@ -115,23 +139,10 @@ function check()
     pylint -E $@;    
 }
 
-up(){
-  local d=""
-  limit=$1
-  for ((i=1 ; i <= limit ; i++))
-    do
-      d=$d/..
-    done
-  d=$(echo $d | sed 's/^\///')
-  if [ -z "$d" ]; then
-    d=..
-  fi
-  cd $d
-}
-
 extract () {
     if [ -f $1 ] ; then
         case $1 in
+            *.tar.xz)   tar xJf $1      ;;
             *.tar.bz2)  tar xjf $1      ;;
             *.tar.gz)   tar xzf $1      ;;
             *.bz2)      bunzip2 $1      ;;
@@ -148,4 +159,3 @@ extract () {
         echo "'$1' is not a valid file"
     fi
 }
-
