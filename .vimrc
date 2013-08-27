@@ -5,6 +5,7 @@ set expandtab
 set nocompatible
 set foldmethod=indent
 set foldlevel=99
+set colorcolumn=80
 set undolevels=1000
 set makeprg=python\ %
 filetype plugin indent on
@@ -28,26 +29,10 @@ au BufRead,BufNewFile *.py syntax match ExtraWhiteSpace /\s\+$\|\t/
 
 syntax on
 
+vmap <C-c> "+y
 map <C-n> :set nu!<CR>
 
+autocmd VimEnter * colorscheme desert
 set mouse=r
 au BufReadPost * if line("'\"") > 0|if line("'\"") <= line("$")|exe("norm '\"")|else|exe "norm $"|endif|endif
 
-colorscheme desert
-set guioptions-=m
-set guioptions-=T
-set guioptions-=r
-set guifont=Monospace\ 9
-
-nnoremap <c-c> :q<CR>
-nnoremap <c-space> <c-w><c-w>
-nnoremap <c-up> <c-w><c-s>
-nnoremap <c-right> <c-w><c-v>
-
-
-augroup vimrc_autocmds
-    autocmd!
-    autocmd FileType python highlight Excess ctermbg=DarkRed guibg=Red
-    autocmd FileType python match Excess /\%81v.*/
-    autocmd FileType python set nowrap
-augroup END
