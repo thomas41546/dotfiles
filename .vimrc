@@ -28,8 +28,10 @@ au BufRead,BufNewFile *.py syntax match ExtraWhiteSpace /\s\+$\|\t/
 
 syntax on
 
+vmap <C-c> "+y
 map <C-n> :set nu!<CR>
 
+autocmd VimEnter * colorscheme desert
 set mouse=r
 au BufReadPost * if line("'\"") > 0|if line("'\"") <= line("$")|exe("norm '\"")|else|exe "norm $"|endif|endif
 

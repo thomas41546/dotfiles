@@ -1,0 +1,370 @@
+#!/usr/bin/python
+import code
+import atexit
+import os
+import subprocess
+import signal
+import shlex
+import traceback
+import getpass
+import socket
+import re
+import readline
+import glob
+import command as cmd
+
+from colorama import Fore, Back, Style
+from itertools import chain
+from itertools import groupby
+
+DEBUG = False 
+ENV = os.environ
+ALIAS = []
+PS1 = None
+
+class Pipe:
+    def __init__(self, op):
+        self.op = op
+    
+    def __str__(self):
+        return "PIPE[%s]" % self.op
+
+class Command:
+    def __init__(self, args):
+        global ENV
+        global ALIAS
+
+        # ~ matching
+        for i in range(0, len(args)):
+            if args[i].startswith('~'):
+                args[i] = args[i].replace('~', ENV["HOME"])
+
+        for alias in ALIAS:
+            args = alias(args)
+
+        self.args = args
+        self.env = ENV
+        self.pipes(os.sys.stdin, os.sys.stdout, os.sys.stderr)
+        self.process = None
+
+    def pipes(self, stdin, stdout, stderr):
+        self.stdin = stdin
+        self.stdout = stdout
+        self.stderr = stderr 
+
+    def __str__(self):
+        return "CMD" + str(self.args)
+
+    def run(self):
+        if len(self.args) == 0 or len(self.args[0]) < 1:
+            return 0
+
+        # builtins 
+        if self.args[0] == 'export':
+            if len(self.args) != 3:
+                return 0
+            print "Setting environment %s=%s" % (self.args[1],self.args[2])
+            global ENV
+            ENV[self.args[1]] = self.args[2]
+            return 0 
+         
+        if self.args[0] == 'exit':
+            os.sys.exit(0)
+            return 0
+        
+        if self.args[0] == 'debug':
+            global DEBUG
+            if DEBUG:
+                DEBUG = False
+            else:
+                DEBUG = True
+            print "DEBUG = ",DEBUG
+            return 0
+
+        if self.args[0] == 'exe':
+            exec((' ').join(self.args[1:]))
+            return 0
+    
+        if self.args[0] == 'history':
+
+            hfilepath = os.path.join(ENV["HOME"],".history")
+
+            if len(self.args) > 1:
+                if self.args[1].lower() == '-c':
+                    readline.clear_history()
+                    readline.write_history_file()
+                    return 0
+
+                return 1 
+            else:
+                f = open(hfilepath,'r')
+                i = 0
+                for line in f:
+                    i += 1
+                    print "%d %s" % (i,line.strip())
+                f.close()
+                return 0 
+
+        if self.args[0] == 'cd':  
+            try:
+                os.chdir((' ').join(self.args[1:]))
+            except Exception as e:
+                print "ERROR",str(e)
+                return 1
+            return 0
+
+        self.process = subprocess.Popen(self.args, 
+                                       stdout = self.stdout, 
+                                       stdin = self.stdin,
+                                       stderr = self.stderr,
+                                       shell = False,
+                                       env = self.env)
+    def wait(self):
+        if self.process is None:
+            return 0 
+
+        try:
+            self.process.wait()
+
+        except KeyboardInterrupt:
+            self.process.send_signal(signal.SIGTERM)
+            return 0
+
+        return self.process.returncode
+
+
+class CommandManager(cmd.Cmd):    
+
+    def postcmd(self,stop, line):
+        global PS1
+
+        self.prompt = "#"
+        if PS1 is not None:
+            self.prompt = PS1()
+
+        readline.write_history_file()
+
+    def blob_process_mapper(self,blobs): 
+        seps = ['|']
+
+        seps_ordered = []
+        for blob in blobs: 
+            if blob in seps: 
+                seps_ordered += [Pipe(blob)]
+
+        seps_index = 0
+        process_args = []
+        for k, group in groupby(blobs, lambda x: x in seps):
+            if not k:
+                process_args += [Command(list(group))]
+                if seps_index < len(seps_ordered):
+                    process_args += [seps_ordered[seps_index]]
+                    seps_index += 1
+
+        return process_args
+
+    def default(self, line):
+        global DEBUG
+        try:
+            inp = line
+            blobs = shlex.split(inp.strip())
+            
+            # Phase 2 - map
+            processes = self.blob_process_mapper(blobs)
+           
+            if DEBUG: print [str(x) for x in processes]
+
+            lastProcess = None
+            # Phase 3 - execute
+            for i in range(0,len(processes)):
+                p = processes[i]
+                
+                if isinstance(p, Pipe):
+                    continue
+                
+                if isinstance(p, Command):
+                    
+                    fPipe = bool(i + 1 < len(processes) and 
+                                 isinstance(processes[i+1], Pipe))
+                    
+                    bPipe = bool(i > 0 and 
+                                 isinstance(processes[i-1], Pipe))
+                    
+                    if fPipe:
+                        p.stdout = subprocess.PIPE             
+
+                    if bPipe:
+                        p.stdin = lastProcess.stdout
+
+                    p.run()
+
+                    if fPipe:
+                        lastProcess = p.process
+                    else:
+                        rc = p.wait()
+                        if rc != 0: print "RC",rc 
+
+        except Exception as e:
+            print "Error occured: %s" % str(e)
+            if DEBUG:
+                traceback.print_exc()
+
+
+    def completedefault(self, text, line, start_index, end_index): 
+        blobs = shlex.split(line.strip())
+
+        global ENV
+        for i in range(0, len(blobs)): 
+            if blobs[i].startswith('~'):
+                blobs[i] = blobs[i].replace('~', ENV["HOME"]+'/')
+        
+        # TODO PATH WITH - does not correctly autocomplete
+        
+        # Search path for executable programs 
+        matches = []
+        if len(blobs) == 1 and not blobs[0].startswith('.') and not blobs[0].startswith('/'):
+            paths = ENV["PATH"].split(':')
+            for p in paths:
+                try:
+                    for f in os.listdir(p):
+                        if os.access(os.path.join(p,f), os.X_OK) and f.startswith(blobs[0]):
+                            matches += [f] 
+                except Exception as e: pass
+            
+            if len(matches) == 0: return None
+
+            if line.find(matches[0]) == -1 and line.find(' ') == -1:
+                return matches
+
+        # Default starts directory path
+        if line[-1] == ' ':
+            matches = []
+            for g in os.listdir(os.getcwd()): matches += [g]
+            matches = filter(lambda x:x!='/' or x!='./' or x != '.',matches)
+            return matches
+       
+        # Match all path arguments
+        head, tail = os.path.split(blobs[-1])
+        if head == '': head = '.'
+        matches = []
+        for d in os.listdir(head):
+            if d.startswith(tail):
+                matches += [d]
+        return matches
+
+def setupEnv():
+    global ENV
+    global ALIAS
+    global PS1
+    
+    passwd = open('/etc/passwd','r')
+    for line in passwd:
+        userpwd = line.split(':')
+        if userpwd[2] == str(os.getuid()):
+            ENV["LOGNAME"] = str(userpwd[0])
+            ENV["USER"] = str(userpwd[0])
+            ENV["HOME"] = str(userpwd[5])
+            if len(userpwd[4]) > 0:
+                print "Welcome %s!" % str(userpwd[4].split(',')[0])
+    passwd.close()
+
+    ENV["PATH"] = ('/bin:'
+                   '/usr/sbin:'
+                   '/usr/local/bin:'
+                   '/sbin:'
+                   '/home/polast/bin:'
+                   '/usr/bin')
+
+    ENV["EDITOR"] = 'vim'
+    ENV["MERGE_TOOL"] = 'meld'
+
+    if os.uname()[0] == "Linux":
+
+        ENV["LS_COLORS"] = ('*_test.py=31:di=94:fi=0:ln=96:ow=97;42:or=33:mi=103;33:'
+                            'ex=01;92:*.pyc=90:*.o=90:*.d=90:*.py=31:*.c=36:*.h=93:'
+                            '*_test.py=36') 
+    else: # OSX
+        ENV["CLICOLOR"] = '1'
+        ENV["LSCOLORS"] = 'GxFxCxDxBxegedabagaced'
+
+    if os.path.exists('/spgear/spgear/bin'):
+        SPGEAR = (     '/spgear/spgear/bin:'
+                   '/spgear/tools/bin:'
+                   '/home/runner/bin:'
+                   '/spgear/spgear/bin:'
+                   '/spgear/tools/bin:')
+        
+        ENV["PATH"] += ":" + SPGEAR
+
+    # Alias
+    def alias1(args):
+        if args[0] == 'ls' and os.uname()[0] == "Linux": args = ['ls','--color'] + args[1:]
+        return args
+
+    def alias2(args):
+        if args[0] == 'grep': args = ['grep','--color'] + args[1:] 
+        return args
+
+    def alias3(args):
+        if args[0] == 'nano': args = ['gvim'] + args[1:]
+        return args
+
+    def alias4(args):
+        if args[0] == 'vim': args = ['gvim'] + args[1:]
+        return args
+
+    def alias5(args):
+        if args[0] == 'py': args = ['/usr/bin/python'] + args[1:]
+        return args
+
+    def alias6(args):
+        if args[0] == 'hh': args = ['cd','/home/polast/workspace/nsfw']
+        return args
+
+    def alias7(args):
+        if args[0] == 'check': args = ['pylint','-E','--rcfile=/home/polast/workspace/nsfw/runner/doc/pylintrc'] + args[1:]
+        return args
+
+    ALIAS += [alias1, alias2, alias3, alias4, alias5, alias6, alias7]
+
+    # PS1
+    def ps1():
+        gitp = subprocess.Popen(["git","rev-parse","--abbrev-ref","HEAD"],
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                shell=False)
+
+        git = gitp.communicate()[0].strip()
+
+        #return "%s@%s %s [%s]" % (
+        #                      getpass.getuser(),
+        #                      socket.gethostname(), 
+        #                      os.getcwd(), 
+        #                      git)
+        return "%s%s%s %s%s%s" % (
+                              Style.BRIGHT + Fore.RED + getpass.getuser(),
+                              Fore.WHITE + '@',
+                              Fore.GREEN + socket.gethostname(),
+                              Fore.BLUE + os.getcwd(),
+                              Fore.YELLOW + '['+git+']',
+                              Fore.WHITE + ': '+ 
+                              Fore.RESET + Back.RESET + Style.RESET_ALL)
+
+    PS1 = ps1
+
+# main()
+if __name__ == "__main__":
+    setupEnv()
+
+    try:
+        readline.read_history_file()
+    except Exception as e:
+        print "Failed to load history.."
+
+    cmdManager = CommandManager()
+
+    while True:
+        try:
+            cmdManager.cmdloop()
+        except KeyboardInterrupt as e:
+            print "Caught keyboard interrupt"
