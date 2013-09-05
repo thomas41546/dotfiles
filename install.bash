@@ -20,4 +20,4 @@ echo "=====updating apt and upgrading programs===="
 sudo apt-get update && sudo apt-get upgrade
 
 echo "=====installing essential packages====="
-sudo apt-get install meld build-essential git tmux vim vim-gnome libncurses5-dev  
+sudo apt-get install meld build-essential git tmux vim vim-gnome libncurses5-dev python-xlib

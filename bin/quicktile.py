@@ -1,1 +1,0 @@
-./quicktile/quicktile.py
