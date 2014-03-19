@@ -13,7 +13,6 @@ import readline
 import glob
 import command as cmd
 
-from colorama import Fore, Back, Style
 from itertools import chain
 from itertools import groupby
 
@@ -257,16 +256,19 @@ def setupEnv():
     global ALIAS
     global PS1
     
-    passwd = open('/etc/passwd','r')
-    for line in passwd:
-        userpwd = line.split(':')
-        if userpwd[2] == str(os.getuid()):
-            ENV["LOGNAME"] = str(userpwd[0])
-            ENV["USER"] = str(userpwd[0])
-            ENV["HOME"] = str(userpwd[5])
-            if len(userpwd[4]) > 0:
-                print "Welcome %s!" % str(userpwd[4].split(',')[0])
-    passwd.close()
+    try:
+        passwd = open('/etc/passwd','r')
+        for line in passwd:
+            userpwd = line.split(':')
+            if userpwd[2] == str(os.getuid()):
+                ENV["LOGNAME"] = str(userpwd[0])
+                ENV["USER"] = str(userpwd[0])
+                ENV["HOME"] = str(userpwd[5])
+                if len(userpwd[4]) > 0:
+                    print "Welcome %s!" % str(userpwd[4].split(',')[0])
+        passwd.close()
+    except:
+        pass
 
     ENV["PATH"] = ('/bin:'
                    '/usr/sbin:'
@@ -336,11 +338,12 @@ def setupEnv():
 
         git = gitp.communicate()[0].strip()
 
-        #return "%s@%s %s [%s]" % (
-        #                      getpass.getuser(),
-        #                      socket.gethostname(), 
-        #                      os.getcwd(), 
-        #                      git)
+        return "%s@%s %s [%s]" % (
+                              getpass.getuser(),
+                              socket.gethostname(), 
+                              os.getcwd(), 
+                              git)
+        """
         return "%s%s%s %s%s%s" % (
                               Style.BRIGHT + Fore.RED + getpass.getuser(),
                               Fore.WHITE + '@',
@@ -349,7 +352,7 @@ def setupEnv():
                               Fore.YELLOW + '['+git+']',
                               Fore.WHITE + ': '+ 
                               Fore.RESET + Back.RESET + Style.RESET_ALL)
-
+        """
     PS1 = ps1
 
 # main()
