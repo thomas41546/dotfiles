@@ -1,9 +1,9 @@
+# If not running interactively, don't do anything
+[ -z "$PS1" ] && return
+
 shell="$(basename $(ps -p $$ -o command | sed '1d; s/^-//; s/ .*$//'))"    
 
 export PATH=$PATH:$HOME/bin
-
-# If not running interactively, don't do anything
-[ -z "$PS1" ] && return
 
 if [ "$(uname -s)" == "Linux" ]; then
     #LINUX
@@ -18,7 +18,7 @@ elif [ "$(uname -s)" == "Darwin" ]; then
     export CLICOLOR=1
     export LSCOLORS=GxFxCxDxBxegedabagaced
     alias la='ls -la'
-	alias gvim='mvim'
+    alias serial='sudo cu -l /dev/tty.usbserial -s 115200'
 fi
 
 export HISTFILESIZE=20000
@@ -103,17 +103,18 @@ _git="${c_yellow}["'$(git_branch)'"]"
 PS1=$(echo -e "${c_bright}${_user}${_host}${_cwd}${_prompt}${_git}${jobs} ${c_nc}")                   
 
 alias py='/usr/bin/python'
-alias vim='gvim'
-alias nano='gvim'
+alias nano='vim'
 alias grep='grep --color=always'
 alias zzz='sudo pm-suspend'
 alias gg='giggle'
-alias emacs='gvim'
+alias emacs='vim'
+alias gl='git log --pretty=format:"%h%x09%an%x09%ad%x09%s"'
 
 alias ..="cd .."
 alias ...="cd ../.."
 alias ....="cd ../../.."
 alias .....="cd ../../../.."
+
 
 function s() { # do sudo, or sudo the last command if no argument given
     if [[ $# == 0 ]]; then
@@ -161,3 +162,4 @@ extract () {
         echo "'$1' is not a valid file"
     fi
 }
+
